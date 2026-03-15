@@ -2,7 +2,7 @@
 import React, { useRef, useCallback, useEffect, useState } from "react";
 import {
   Stage, Layer as KonvaLayer, Rect, Line, Text, Group,
-  Circle, Transformer, Path,
+  Circle, Transformer, Path, Arrow,
 } from "react-konva";
 import Konva from "konva";
 import { FloorObject, ObjectType, CanvasConfig, Layer } from "../types/floorPlan";
@@ -61,164 +61,327 @@ const ArchSymbol: React.FC<{ obj: FloorObject; isSelected: boolean }> = ({ obj, 
   const sw = isSelected ? 2 : 1.5;
 
   switch (obj.type) {
+
     // ── MUR : remplissage plein avec hachures obliques ──
     case "wall": {
       const hatchLines: React.ReactNode[] = [];
-      const step = 6;
-      for (let i = -(h); i < w + h; i += step) {
+      const step = 5;
+      for (let i = -h; i < w + h; i += step) {
         hatchLines.push(
           <Line key={i}
             points={[Math.max(0, i), Math.max(0, -i), Math.min(w, i + h), Math.min(h, h - i + h)]}
-            stroke="rgba(255,255,255,0.18)" strokeWidth={0.8} listening={false} />
+            stroke="rgba(255,255,255,0.25)" strokeWidth={0.7} listening={false} />
         );
       }
       return (
         <>
-          <Rect width={w} height={h} fill={obj.fill} stroke={sc} strokeWidth={sw} />
+          <Rect width={w} height={h} fill="#475569" stroke={sc} strokeWidth={sw} />
           {hatchLines}
         </>
       );
     }
 
-    // ── PORTE : battant + arc de rotation ──
+    // ── PORTE : battant + arc de rotation (plan architectural standard) ──
     case "door": {
-      const leafH = Math.max(3, Math.round(h * 0.6));
-      const r = w; // swing radius = door width
-      // Arc path: M (w,0) A r r 0 0 0 0 w  → quarter circle hinge at (0,0)
+      const size = Math.min(w, h);
       return (
         <>
-          {/* Hinge pin */}
-          <Circle x={0} y={0} radius={2} fill={sc} />
-          {/* Door leaf */}
-          <Rect x={0} y={0} width={w} height={leafH} fill="white" stroke={sc} strokeWidth={sw} cornerRadius={1} />
-          {/* Swing arc */}
+          {/* Hinge point */}
+          <Circle x={0} y={0} radius={2.5} fill={sc} />
+          {/* Door leaf (thin rectangle) */}
+          <Rect x={0} y={0} width={size} height={5}
+            fill="#FFFFFF" stroke={sc} strokeWidth={sw} />
+          {/* Swing arc: quarter circle from (size,0) → (0,size) */}
           <Path
-            data={`M ${w} 0 A ${r} ${r} 0 0 0 0 ${w}`}
-            stroke={sc} strokeWidth={1} fill="transparent" opacity={0.55}
+            data={`M ${size} 0 A ${size} ${size} 0 0 0 0 ${size}`}
+            stroke={sc} strokeWidth={1} fill="rgba(200,220,255,0.15)"
           />
-          {/* Open door guide line */}
-          <Line points={[0, 0, 0, w]} stroke={sc} strokeWidth={0.6} opacity={0.4} />
+          {/* Guide line along wall */}
+          <Line points={[0, 0, 0, size]} stroke={sc} strokeWidth={1} dash={[3, 2]} opacity={0.5} />
         </>
       );
     }
 
-    // ── FENÊTRE : cadre + deux vitres ──
+    // ── FENÊTRE : coupure de mur avec trois lignes (standard plan) ──
     case "window": {
+      const t = h; // thickness = height (sits in a wall)
       return (
         <>
-          {/* Outer frame (wall gap) */}
-          <Rect width={w} height={h} fill="white" stroke={sc} strokeWidth={sw} />
-          {/* Glass pane divider */}
-          <Line points={[0, h / 2, w, h / 2]} stroke={sc} strokeWidth={1.5} />
-          {/* Inner glass reflections */}
-          <Rect x={1} y={1} width={w - 2} height={h / 2 - 1.5}
-            fill="rgba(6,182,212,0.15)" stroke="transparent" />
-          <Rect x={1} y={h / 2 + 1.5} width={w - 2} height={h / 2 - 2.5}
-            fill="rgba(6,182,212,0.15)" stroke="transparent" />
+          {/* Wall gap fill */}
+          <Rect width={w} height={t} fill="#FFFFFF" stroke={sc} strokeWidth={sw} />
+          {/* Outer glass line */}
+          <Line points={[0, t * 0.2, w, t * 0.2]} stroke={sc} strokeWidth={1} />
+          {/* Inner glass line */}
+          <Line points={[0, t * 0.8, w, t * 0.8]} stroke={sc} strokeWidth={1} />
+          {/* Glass fill tint */}
+          <Rect x={1} y={t * 0.2} width={w - 2} height={t * 0.6}
+            fill="rgba(186,230,253,0.45)" stroke="transparent" />
         </>
       );
     }
 
-    // ── BUREAU : plateau + moniteur ──
+    // ── ESCALIER : marches parallèles + flèche directionnelle ──
+    case "staircase": {
+      const stepCount = Math.max(5, Math.floor(h / 16));
+      const stepH = h / stepCount;
+      const lines: React.ReactNode[] = [];
+      for (let i = 0; i <= stepCount; i++) {
+        lines.push(
+          <Line key={i}
+            points={[0, i * stepH, w, i * stepH]}
+            stroke={sc}
+            strokeWidth={i === 0 || i === stepCount ? sw : 0.7}
+          />
+        );
+      }
+      const ax = w / 2;
+      return (
+        <>
+          {/* Outer border */}
+          <Rect width={w} height={h} fill={obj.fill} stroke={sc} strokeWidth={sw} />
+          {/* Step lines */}
+          {lines}
+          {/* Direction arrow */}
+          <Arrow
+            points={[ax, h - 10, ax, 10]}
+            stroke={sc} strokeWidth={1}
+            fill={sc}
+            pointerLength={6} pointerWidth={6}
+            opacity={0.7}
+          />
+        </>
+      );
+    }
+
+    // ── BUREAU : surface de travail avec inset ──
     case "desk": {
-      const monW = Math.min(30, w * 0.3);
-      const monH = Math.min(16, h * 0.35);
+      const inset = 4;
       return (
         <>
-          {/* Main desk surface */}
           <Rect width={w} height={h} fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={2} />
-          {/* Inner work surface */}
-          <Rect x={4} y={4} width={w - 8} height={h - 8}
-            fill="transparent" stroke={sc} strokeWidth={0.6} opacity={0.4} cornerRadius={1} />
-          {/* Monitor */}
-          <Rect x={w / 2 - monW / 2} y={h / 2 - monH / 2}
-            width={monW} height={monH}
-            fill="rgba(0,0,0,0.35)" stroke={sc} strokeWidth={0.8} cornerRadius={1} />
-          {/* Monitor stand */}
-          <Line
-            points={[w / 2, h / 2 + monH / 2, w / 2, h - 5]}
-            stroke={sc} strokeWidth={1} />
+          <Rect x={inset} y={inset} width={w - inset * 2} height={h - inset * 2}
+            fill="transparent" stroke={sc} strokeWidth={0.7} cornerRadius={1} opacity={0.5} />
+          {/* Front edge (thick line indicating user side) */}
+          <Line points={[inset, h - inset, w - inset, h - inset]} stroke={sc} strokeWidth={1.5} />
         </>
       );
     }
 
-    // ── CHAISE : siège circulaire + dossier ──
+    // ── CHAISE : siège + dossier (vue de dessus) ──
     case "chair": {
-      const seatR = Math.min(w, h) * 0.33;
       const cx = w / 2;
-      const cy = h * 0.58;
-      const backW = seatR * 1.5;
-      const backH = seatR * 0.45;
+      const seatY = h * 0.3;
+      const seatH = h * 0.65;
+      const backH = h * 0.22;
       return (
         <>
           {/* Seat */}
-          <Circle x={cx} y={cy} radius={seatR}
-            fill={obj.fill} stroke={sc} strokeWidth={sw} />
-          {/* Backrest */}
-          <Rect x={cx - backW / 2} y={h * 0.05}
-            width={backW} height={backH}
+          <Rect x={2} y={seatY} width={w - 4} height={seatH}
             fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={3} />
-          {/* Seat cushion detail */}
-          <Circle x={cx} y={cy} radius={seatR * 0.55}
-            fill="transparent" stroke={sc} strokeWidth={0.5} opacity={0.4} />
+          {/* Backrest arc */}
+          <Path
+            data={`M 2 ${seatY + 3} A ${cx - 2} ${backH * 1.4} 0 0 1 ${w - 2} ${seatY + 3}`}
+            fill={obj.fill} stroke={sc} strokeWidth={sw}
+          />
         </>
       );
     }
 
-    // ── TABLE DE RÉUNION : plateau arrondi ──
-    case "meeting-table": {
-      const inset = 8;
+    // ── LIT : matelas + oreillers + tête de lit ──
+    case "bed": {
+      const headH = h * 0.28;
+      const pillarMargin = w * 0.07;
+      const pillarW = (w - pillarMargin * 3) / 2;
       return (
         <>
-          {/* Table surface */}
+          {/* Mattress body */}
+          <Rect width={w} height={h} fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={2} />
+          {/* Head divider */}
+          <Line points={[0, headH, w, headH]} stroke={sc} strokeWidth={1} />
+          {/* Left pillow */}
+          <Rect
+            x={pillarMargin} y={pillarMargin * 0.5}
+            width={pillarW} height={headH - pillarMargin}
+            fill="rgba(148,163,184,0.25)" stroke={sc} strokeWidth={0.8} cornerRadius={3}
+          />
+          {/* Right pillow */}
+          <Rect
+            x={pillarMargin * 2 + pillarW} y={pillarMargin * 0.5}
+            width={pillarW} height={headH - pillarMargin}
+            fill="rgba(148,163,184,0.25)" stroke={sc} strokeWidth={0.8} cornerRadius={3}
+          />
+          {/* Mattress quilting lines */}
+          <Line points={[w * 0.5, headH + 4, w * 0.5, h - 4]}
+            stroke={sc} strokeWidth={0.4} opacity={0.3} />
+          <Line points={[4, h * 0.6, w - 4, h * 0.6]}
+            stroke={sc} strokeWidth={0.4} opacity={0.3} />
+        </>
+      );
+    }
+
+    // ── CANAPÉ : dossier + assise + accoudoirs (vue de dessus) ──
+    case "sofa": {
+      const backH = h * 0.28;
+      const armW = w * 0.12;
+      const gap = 3;
+      return (
+        <>
+          {/* Backrest */}
+          <Rect width={w} height={backH} fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={3} />
+          {/* Left armrest */}
+          <Rect x={0} y={backH} width={armW} height={h - backH}
+            fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={2} />
+          {/* Right armrest */}
+          <Rect x={w - armW} y={backH} width={armW} height={h - backH}
+            fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={2} />
+          {/* Seat cushions */}
+          <Rect x={armW + gap} y={backH + gap} width={w - armW * 2 - gap * 2} height={h - backH - gap * 2}
+            fill="rgba(148,163,184,0.18)" stroke={sc} strokeWidth={0.7} cornerRadius={2} />
+          {/* Cushion split */}
+          <Line
+            points={[w / 2, backH + gap, w / 2, h - gap]}
+            stroke={sc} strokeWidth={0.6} opacity={0.5}
+          />
+        </>
+      );
+    }
+
+    // ── TABLE DE RÉUNION : plateau ovalisé + places ──
+    case "meeting-table": {
+      const inset = 6;
+      const seatW = 18;
+      const seatH = 10;
+      const seatCount = Math.max(2, Math.floor((w - 20) / 30));
+      const seats: React.ReactNode[] = [];
+      for (let i = 0; i < seatCount; i++) {
+        const sx = 20 + i * ((w - 40) / (seatCount - 1 || 1)) - seatW / 2;
+        seats.push(
+          <Rect key={`t${i}`} x={sx} y={-seatH - 2} width={seatW} height={seatH}
+            fill="transparent" stroke={sc} strokeWidth={0.7} cornerRadius={2} />,
+          <Rect key={`b${i}`} x={sx} y={h + 2} width={seatW} height={seatH}
+            fill="transparent" stroke={sc} strokeWidth={0.7} cornerRadius={2} />
+        );
+      }
+      return (
+        <>
+          {seats}
           <Rect width={w} height={h} fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={h * 0.35} />
-          {/* Inner edge detail */}
           <Rect x={inset} y={inset} width={w - inset * 2} height={h - inset * 2}
-            fill="transparent" stroke={sc} strokeWidth={0.6} cornerRadius={h * 0.25} opacity={0.4} />
-          {/* Center line */}
-          <Line points={[w * 0.15, h / 2, w * 0.85, h / 2]}
+            fill="transparent" stroke={sc} strokeWidth={0.5} cornerRadius={h * 0.25} opacity={0.4} />
+        </>
+      );
+    }
+
+    // ── ARMOIRE : caisson portes battantes ──
+    case "cabinet": {
+      return (
+        <>
+          <Rect width={w} height={h} fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={2} />
+          {/* Center split */}
+          <Line points={[w / 2, 2, w / 2, h - 2]} stroke={sc} strokeWidth={0.8} opacity={0.6} />
+          {/* Door handles */}
+          <Rect x={w / 4 - 5} y={h / 2 - 2} width={10} height={4}
+            fill={sc} stroke="transparent" cornerRadius={2} opacity={0.6} />
+          <Rect x={(3 * w) / 4 - 5} y={h / 2 - 2} width={10} height={4}
+            fill={sc} stroke="transparent" cornerRadius={2} opacity={0.6} />
+          {/* Interior rail arc (wardrobe) */}
+          <Line points={[4, h * 0.25, w - 4, h * 0.25]}
             stroke={sc} strokeWidth={0.5} opacity={0.3} />
         </>
       );
     }
 
-    // ── ARMOIRE : caisson avec croix et poignée ──
-    case "cabinet": {
+    // ── WC : réservoir + cuvette ──
+    case "toilet": {
+      const tankH = h * 0.3;
+      const tankW = w * 0.78;
+      const bowlY = tankH + 2;
+      const bowlH = h - tankH - 2;
       return (
         <>
-          <Rect width={w} height={h} fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={3} />
-          {/* Panel lines */}
-          <Line points={[w / 2, 2, w / 2, h - 2]} stroke={sc} strokeWidth={0.8} opacity={0.5} />
-          <Line points={[2, h / 2, w - 2, h / 2]} stroke={sc} strokeWidth={0.5} opacity={0.3} />
-          {/* Door handles */}
-          <Rect x={w / 4 - 4} y={h / 2 - 2} width={8} height={4}
-            fill={sc} stroke="transparent" cornerRadius={2} opacity={0.7} />
-          <Rect x={(3 * w) / 4 - 4} y={h / 2 - 2} width={8} height={4}
-            fill={sc} stroke="transparent" cornerRadius={2} opacity={0.7} />
+          {/* Tank */}
+          <Rect x={(w - tankW) / 2} y={0} width={tankW} height={tankH}
+            fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={2} />
+          {/* Bowl outer (D-shape via Path) */}
+          <Path
+            data={`M ${w * 0.08} ${bowlY} L ${w * 0.92} ${bowlY} Q ${w} ${bowlY + bowlH * 0.45} ${w * 0.92} ${h} L ${w * 0.08} ${h} Q 0 ${bowlY + bowlH * 0.45} ${w * 0.08} ${bowlY} Z`}
+            fill={obj.fill} stroke={sc} strokeWidth={sw}
+          />
+          {/* Seat ring */}
+          <Path
+            data={`M ${w * 0.16} ${bowlY + bowlH * 0.07} L ${w * 0.84} ${bowlY + bowlH * 0.07} Q ${w * 0.93} ${bowlY + bowlH * 0.48} ${w * 0.84} ${h - bowlH * 0.07} L ${w * 0.16} ${h - bowlH * 0.07} Q ${w * 0.07} ${bowlY + bowlH * 0.48} ${w * 0.16} ${bowlY + bowlH * 0.07} Z`}
+            fill="transparent" stroke={sc} strokeWidth={0.7}
+          />
         </>
       );
     }
 
-    // ── PLANTE : pot + feuillage ──
+    // ── BAIGNOIRE : caisson + cuvette ovale ──
+    case "bathtub": {
+      const margin = Math.min(w, h) * 0.1;
+      const faucetH = 8;
+      return (
+        <>
+          {/* Tub outer */}
+          <Rect width={w} height={h} fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={5} />
+          {/* Inner basin (ellipse approximated with rounded rect) */}
+          <Rect
+            x={margin} y={margin + faucetH}
+            width={w - margin * 2} height={h - margin * 2 - faucetH}
+            fill="rgba(186,230,253,0.5)" stroke={sc} strokeWidth={0.8} cornerRadius={4}
+          />
+          {/* Drain circle */}
+          <Circle x={w / 2} y={h - margin * 1.4} radius={4}
+            fill="#FFFFFF" stroke={sc} strokeWidth={0.8} />
+          {/* Faucet bar */}
+          <Rect x={w * 0.3} y={margin + 2} width={w * 0.4} height={faucetH - 2}
+            fill={sc} stroke="transparent" cornerRadius={2} opacity={0.5} />
+        </>
+      );
+    }
+
+    // ── ÉVIER / LAVABO : bac carré + vasque circulaire ──
+    case "sink": {
+      const margin = 4;
+      const bRadius = Math.min(w, h) / 2 - margin - 2;
+      const cx = w / 2;
+      const cy = h / 2;
+      return (
+        <>
+          {/* Countertop */}
+          <Rect width={w} height={h} fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={2} />
+          {/* Inner ledge */}
+          <Rect x={margin} y={margin} width={w - margin * 2} height={h - margin * 2}
+            fill="transparent" stroke={sc} strokeWidth={0.5} cornerRadius={2} opacity={0.5} />
+          {/* Basin */}
+          <Circle x={cx} y={cy} radius={bRadius} fill="#BAE6FD" stroke={sc} strokeWidth={0.8} />
+          {/* Drain */}
+          <Circle x={cx} y={cy} radius={2.5} fill={sc} />
+          {/* Faucet */}
+          <Line points={[cx - 6, cy - bRadius + 4, cx + 6, cy - bRadius + 4]}
+            stroke={sc} strokeWidth={1.8} lineCap="round" />
+          <Line points={[cx, cy - bRadius, cx, cy - bRadius + 7]}
+            stroke={sc} strokeWidth={1.8} lineCap="round" />
+        </>
+      );
+    }
+
+    // ── PLANTE : cercle + motif feuilles ──
     case "plant": {
       const pr = Math.min(w, h) / 2 - 1;
       const pcx = w / 2;
       const pcy = h / 2;
       return (
         <>
-          {/* Main circle */}
-          <Circle x={pcx} y={pcy} radius={pr}
-            fill={obj.fill} stroke={sc} strokeWidth={sw} />
-          {/* Leaf cross */}
+          <Circle x={pcx} y={pcy} radius={pr} fill={obj.fill} stroke={sc} strokeWidth={sw} />
           <Line points={[pcx, pcy - pr + 3, pcx, pcy + pr - 3]}
-            stroke="rgba(255,255,255,0.65)" strokeWidth={1.5} />
+            stroke="rgba(255,255,255,0.6)" strokeWidth={1.5} />
           <Line points={[pcx - pr + 3, pcy, pcx + pr - 3, pcy]}
-            stroke="rgba(255,255,255,0.65)" strokeWidth={1.5} />
-          {/* Leaf diagonals */}
+            stroke="rgba(255,255,255,0.6)" strokeWidth={1.5} />
           <Line points={[pcx - pr * 0.65, pcy - pr * 0.65, pcx + pr * 0.65, pcy + pr * 0.65]}
-            stroke="rgba(255,255,255,0.28)" strokeWidth={1} />
+            stroke="rgba(255,255,255,0.25)" strokeWidth={1} />
           <Line points={[pcx + pr * 0.65, pcy - pr * 0.65, pcx - pr * 0.65, pcy + pr * 0.65]}
-            stroke="rgba(255,255,255,0.28)" strokeWidth={1} />
+            stroke="rgba(255,255,255,0.25)" strokeWidth={1} />
         </>
       );
     }

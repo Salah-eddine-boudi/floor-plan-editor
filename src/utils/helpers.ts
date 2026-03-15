@@ -69,7 +69,7 @@ export const exportToSVG = (
   canvas: CanvasConfig,
   planName: string
 ): string => {
-  const CIRCLE_TYPES = new Set(["chair", "plant"]);
+  const CIRCLE_TYPES = new Set(["plant"]);
 
   const gridLines: string[] = [];
   if (canvas.gridVisible) {

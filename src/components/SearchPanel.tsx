@@ -9,7 +9,10 @@ interface Props {
 }
 
 const ALL_TYPES: ObjectType[] = [
-  "desk", "chair", "wall", "door", "window", "meeting-table", "cabinet", "plant", "text",
+  "wall", "staircase", "door", "window",
+  "bed", "sofa", "desk", "chair", "meeting-table", "cabinet",
+  "toilet", "bathtub", "sink",
+  "plant", "text",
 ];
 
 const ALL_LAYERS: LayerName[] = ["structure", "openings", "furniture", "decoration"];

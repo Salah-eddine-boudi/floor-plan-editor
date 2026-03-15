@@ -103,13 +103,16 @@ export const exportToSVG = (
       const r = Math.min(obj.width, obj.height) / 2;
       return [
         `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${obj.fill}" stroke="${obj.stroke}" stroke-width="1.5"${opacity}${transform}/>`,
-        `<text x="${cx}" y="${cy + r + 10}" text-anchor="middle" font-size="9" fill="#94A3B8" font-family="Inter,sans-serif">${obj.label}</text>`,
+        `<text x="${cx}" y="${cy + 4}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="${obj.stroke}" font-family="Inter,sans-serif">${obj.label}</text>`,
       ].join("\n  ");
     }
 
+    // Use white label for dark-fill types (wall, column), stroke color otherwise
+    const darkFill = obj.type === "wall" || obj.type === "column";
+    const labelColor = darkFill ? "#ffffff" : obj.stroke;
     return [
       `<rect x="${obj.x}" y="${obj.y}" width="${obj.width}" height="${obj.height}" rx="2" fill="${obj.fill}" stroke="${obj.stroke}" stroke-width="1.5"${opacity}${transform}/>`,
-      `<text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="9" fill="white" font-family="Inter,sans-serif" font-weight="600">${obj.label}</text>`,
+      `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-size="9" fill="${labelColor}" font-family="Inter,sans-serif" font-weight="600">${obj.label}</text>`,
     ].join("\n  ");
   });
 

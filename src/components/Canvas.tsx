@@ -25,6 +25,7 @@ interface CanvasProps {
   onStagePosChange: (pos: { x: number; y: number }) => void;
   onTextEdit: (id: string, value: string) => void;
   onContextMenu: (id: string, clientX: number, clientY: number) => void;
+  onStageReady?: (stage: Konva.Stage) => void;
 }
 
 // ---- GRILLE ----
@@ -673,6 +674,32 @@ const FloorShape: React.FC<{
     >
       <ArchSymbol obj={obj} isSelected={isSelected} />
 
+      {/* Centered name label — counter-transformed so it's always readable */}
+      {obj.type !== "text" && obj.width >= 24 && obj.height >= 14 && (
+        <Text
+          text={obj.label}
+          x={flipX ? obj.width : 0}
+          y={flipY ? obj.height : 0}
+          width={obj.width}
+          height={obj.height}
+          scaleX={flipX ? -1 : 1}
+          scaleY={flipY ? -1 : 1}
+          offsetX={flipX ? obj.width : 0}
+          offsetY={flipY ? obj.height : 0}
+          align="center"
+          verticalAlign="middle"
+          fontSize={Math.max(7, Math.min(10, Math.min(obj.width, obj.height) / 5))}
+          fill={
+            obj.type === "wall" || obj.type === "column"
+              ? "rgba(255,255,255,0.80)"
+              : "rgba(30,41,59,0.60)"
+          }
+          listening={false}
+          wrap="none"
+          ellipsis
+        />
+      )}
+
       {/* Dimension indicator (counter-transformed so it's always readable) */}
       {isSelected && obj.type !== "text" && (
         <Text
@@ -695,11 +722,24 @@ export const Canvas: React.FC<CanvasProps> = ({
   objects, layers, config, selectedIds, zoom, stagePos,
   onSelect, onShiftSelect, onRubberBandSelect,
   onMove, onBatchMove, onResize, onDrop, onZoom, onStagePosChange,
-  onTextEdit, onContextMenu,
+  onTextEdit, onContextMenu, onStageReady,
 }) => {
   const stageRef = useRef<Konva.Stage>(null);
   const trRef = useRef<Konva.Transformer>(null);
   const shapeRefs = useRef<Map<string, Konva.Group>>(new Map());
+
+  // Fill Stage to the container div
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ w: 800, h: 600 });
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => setContainerSize({ w: el.clientWidth, h: el.clientHeight });
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Feature 3: Text editing overlay
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -715,6 +755,11 @@ export const Canvas: React.FC<CanvasProps> = ({
   } | null>(null);
   const rbStart = useRef<{ x: number; y: number } | null>(null);
   const isRubberBanding = useRef(false);
+
+  // Expose stage instance to parent for export
+  useEffect(() => {
+    if (stageRef.current && onStageReady) onStageReady(stageRef.current);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Update shared Transformer when selectedIds changes
   useEffect(() => {
@@ -895,7 +940,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   };
 
   return (
-    <div className="canvas-container" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+    <div className="canvas-container" ref={containerRef} onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
 
       {/* Feature 3: Text edit overlay textarea */}
       {editingId && (
@@ -916,8 +961,8 @@ export const Canvas: React.FC<CanvasProps> = ({
       {/* @ts-ignore react-konva Stage children typing known issue */}
       <Stage
         ref={stageRef}
-        width={config.width}
-        height={config.height}
+        width={containerSize.w}
+        height={containerSize.h}
         scaleX={zoom}
         scaleY={zoom}
         x={stagePos.x}
@@ -927,7 +972,7 @@ export const Canvas: React.FC<CanvasProps> = ({
         onMouseUp={handleStageMouseUp}
         onDblClick={handleStageDblClick}
         onWheel={handleWheel}
-        style={{ backgroundColor: config.backgroundColor }}
+        style={{ backgroundColor: "#0B1120" }}
       >
         <KonvaLayer listening={false}>
           <Rect width={config.width} height={config.height} fill={config.backgroundColor} />

@@ -112,10 +112,8 @@ kbd {
 
 /* ===== CANVAS ===== */
 .canvas-container {
-  flex: 1; display: flex; align-items: center; justify-content: center;
-  background: #0B1120; position: relative; overflow: hidden;
+  flex: 1; background: #0B1120; position: relative; overflow: hidden;
 }
-.canvas-container canvas { box-shadow: 0 4px 40px rgba(0,0,0,0.5); }
 
 /* ===== PANNEAUX DROITS ===== */
 .right-panels {

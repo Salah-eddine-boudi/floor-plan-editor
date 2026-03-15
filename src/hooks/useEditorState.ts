@@ -311,6 +311,10 @@ export const useEditorState = () => {
 
   // ---- CANVAS CONFIG ----
 
+  const updateCanvasConfig = useCallback((updates: Partial<CanvasConfig>) => {
+    setCanvasConfig((c) => ({ ...c, ...updates }));
+  }, []);
+
   const toggleGrid = useCallback(() => {
     setCanvasConfig((c) => ({ ...c, gridVisible: !c.gridVisible }));
   }, []);
@@ -550,6 +554,7 @@ export const useEditorState = () => {
     toggleLayerVisibility,
     toggleLayerLock,
     // Canvas
+    updateCanvasConfig,
     toggleGrid,
     toggleSnap,
     // History

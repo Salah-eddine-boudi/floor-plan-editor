@@ -37,6 +37,7 @@ interface ToolbarProps {
   onImportJSON: () => void;
   onClearAll: () => void;
   onShowShortcuts: () => void;
+  onShowCanvasSettings: () => void;
 }
 
 const SAVE_ICONS: Record<SaveStatus, string> = { saved: "✓", saving: "⟳", unsaved: "●" };
@@ -126,8 +127,9 @@ export const Toolbar: React.FC<ToolbarProps> = (props) => {
 
       <div className="toolbar-sep" />
 
-      {/* Aide */}
+      {/* Surface & Aide */}
       <div className="toolbar-group">
+        <button className="tb" onClick={props.onShowCanvasSettings} title="Modifier les dimensions du plan">📐 Surface</button>
         <button className="tb" onClick={props.onShowShortcuts} title="Raccourcis clavier (?)">?</button>
       </div>
     </div>

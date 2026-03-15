@@ -10,6 +10,7 @@ import { SearchPanel } from "./SearchPanel";
 import { AlignmentToolbar } from "./AlignmentToolbar";
 import { ContextMenu } from "./ContextMenu";
 import { ShortcutsModal } from "./ShortcutsModal";
+import { CanvasSettingsModal } from "./CanvasSettingsModal";
 import { useEditorState } from "../hooks/useEditorState";
 import { downloadBlob, fileTimestamp, exportToSVG } from "../utils/helpers";
 
@@ -27,6 +28,9 @@ export const FloorPlanEditor: React.FC = () => {
 
   // Shortcuts modal
   const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Canvas settings modal
+  const [showCanvasSettings, setShowCanvasSettings] = useState(false);
 
   // Feature 4: Check localStorage on mount
   useEffect(() => {
@@ -199,6 +203,7 @@ export const FloorPlanEditor: React.FC = () => {
         onImportJSON={handleImportJSON}
         onClearAll={handleClearAll}
         onShowShortcuts={() => setShowShortcuts(true)}
+        onShowCanvasSettings={() => setShowCanvasSettings(true)}
       />
 
       {/* Feature 4: Restore banner */}
@@ -285,6 +290,15 @@ export const FloorPlanEditor: React.FC = () => {
 
       {/* Shortcuts Modal */}
       {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
+
+      {/* Canvas Settings Modal */}
+      {showCanvasSettings && (
+        <CanvasSettingsModal
+          config={editor.canvasConfig}
+          onApply={editor.updateCanvasConfig}
+          onClose={() => setShowCanvasSettings(false)}
+        />
+      )}
     </div>
   );
 };

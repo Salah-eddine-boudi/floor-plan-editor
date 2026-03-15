@@ -382,3 +382,45 @@ kbd {
   white-space: nowrap; min-width: 90px; text-align: center;
 }
 .modal-desc { color: var(--text-dim); flex: 1; }
+
+/* ===== CANVAS SETTINGS MODAL ===== */
+.canvas-settings-box { width: 460px; max-height: 88vh; }
+
+.cs-presets {
+  display: flex; flex-direction: column; gap: 4px; margin-bottom: 4px;
+}
+.cs-preset-btn {
+  background: var(--bg-dark); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-dim);
+  padding: 5px 10px; font-size: 11px; cursor: pointer; text-align: left;
+  transition: all 0.12s;
+}
+.cs-preset-btn:hover       { border-color: var(--accent); color: #fff; }
+.cs-preset-active          { border-color: var(--accent) !important; color: var(--accent) !important; background: rgba(59,130,246,0.08) !important; }
+
+.cs-row { display: flex; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
+.cs-field { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 130px; }
+.cs-px-hint { font-size: 10px; color: var(--text-muted); }
+
+.cs-area-badge {
+  display: inline-block;
+  background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3);
+  color: var(--accent); font-size: 11px; font-weight: 700;
+  padding: 3px 10px; border-radius: 10px; margin-bottom: 4px;
+}
+
+.cs-colors {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.cs-color-btn {
+  width: 26px; height: 26px; border-radius: 4px;
+  border: 2px solid var(--border); cursor: pointer; transition: all 0.1s;
+}
+.cs-color-btn:hover  { border-color: var(--accent); transform: scale(1.1); }
+.cs-color-active     { border-color: var(--accent) !important; box-shadow: 0 0 0 2px rgba(59,130,246,0.4); }
+
+.cs-footer {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+}

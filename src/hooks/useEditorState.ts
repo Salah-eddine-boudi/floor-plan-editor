@@ -22,6 +22,7 @@ export const useEditorState = () => {
   const [canvasConfig, setCanvasConfig] = useState<CanvasConfig>(DEFAULT_CANVAS);
   // Feature 1: Multi-sélection — Set of selected IDs
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [clipboard, setClipboard] = useState<FloorObject[]>([]);
   const [zoom, setZoom] = useState<number>(1);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   const [planName, setPlanName] = useState<string>("Plan sans titre");
@@ -234,6 +235,31 @@ export const useEditorState = () => {
     const selected = objects.filter((o) => selectedIds.has(o.id));
     const rest = objects.filter((o) => !selectedIds.has(o.id));
     const next = [...selected, ...rest];
+    setObjects(next);
+    saveToHistory(next);
+  }, [selectedIds, objects, saveToHistory]);
+
+  // ---- COPY / PASTE ----
+  const copySelected = useCallback(() => {
+    const copies = objects.filter((o) => selectedIds.has(o.id));
+    if (copies.length > 0) setClipboard(copies);
+  }, [objects, selectedIds]);
+
+  const pasteClipboard = useCallback(() => {
+    if (clipboard.length === 0) return;
+    const newObjs = clipboard.map((o) => ({ ...o, id: generateId(), x: o.x + 20, y: o.y + 20 }));
+    const next = [...objects, ...newObjs];
+    setObjects(next);
+    saveToHistory(next);
+    setSelectedIds(new Set(newObjs.map((o) => o.id)));
+  }, [clipboard, objects, saveToHistory]);
+
+  // ---- LOCK TOGGLE ----
+  const lockSelected = useCallback(() => {
+    if (selectedIds.size === 0) return;
+    const firstSel = objects.find((o) => selectedIds.has(o.id));
+    const toLock = !firstSel?.locked;
+    const next = objects.map((o) => (selectedIds.has(o.id) ? { ...o, locked: toLock } : o));
     setObjects(next);
     saveToHistory(next);
   }, [selectedIds, objects, saveToHistory]);
@@ -515,6 +541,11 @@ export const useEditorState = () => {
     // Feature 2: Flip
     flipSelectedH,
     flipSelectedV,
+    // Copy / Paste
+    clipboard,
+    copySelected,
+    pasteClipboard,
+    lockSelected,
     // Layers
     toggleLayerVisibility,
     toggleLayerLock,

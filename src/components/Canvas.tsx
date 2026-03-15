@@ -24,6 +24,7 @@ interface CanvasProps {
   onZoom: (z: number) => void;
   onStagePosChange: (pos: { x: number; y: number }) => void;
   onTextEdit: (id: string, value: string) => void;
+  onContextMenu: (id: string, clientX: number, clientY: number) => void;
 }
 
 // ---- GRILLE ----
@@ -366,6 +367,185 @@ const ArchSymbol: React.FC<{ obj: FloorObject; isSelected: boolean }> = ({ obj, 
       );
     }
 
+    // ── COLONNE STRUCTURELLE ──
+    case "column": {
+      return (
+        <>
+          <Rect width={w} height={h} fill="#374151" stroke={sc} strokeWidth={sw} />
+          <Line points={[0, 0, w, h]} stroke="rgba(255,255,255,0.35)" strokeWidth={1} />
+          <Line points={[w, 0, 0, h]} stroke="rgba(255,255,255,0.35)" strokeWidth={1} />
+        </>
+      );
+    }
+
+    // ── ESCALIER HÉLICOÏDAL : cercles concentriques + palier ──
+    case "stairs-spiral": {
+      const cr = Math.min(w, h) / 2 - 1;
+      const cx = w / 2;
+      const cy = h / 2;
+      const innerR = cr * 0.18;
+      const stepCount = 10;
+      const stepLines: React.ReactNode[] = [];
+      for (let i = 0; i < stepCount; i++) {
+        const a = (i / stepCount) * Math.PI * 2;
+        stepLines.push(
+          <Line key={i}
+            points={[cx + innerR * Math.cos(a), cy + innerR * Math.sin(a),
+                     cx + cr     * Math.cos(a), cy + cr     * Math.sin(a)]}
+            stroke={sc} strokeWidth={0.7} />
+        );
+      }
+      return (
+        <>
+          <Circle x={cx} y={cy} radius={cr}    fill={obj.fill} stroke={sc} strokeWidth={sw} />
+          <Circle x={cx} y={cy} radius={cr*0.5} fill="transparent" stroke={sc} strokeWidth={0.5} opacity={0.4} />
+          <Circle x={cx} y={cy} radius={innerR} fill={sc} stroke={sc} strokeWidth={1} />
+          {stepLines}
+          <Arrow points={[cx, cy - cr + 10, cx, cy - cr * 0.55]}
+            stroke={sc} fill={sc} strokeWidth={1} pointerLength={5} pointerWidth={5} opacity={0.75} />
+        </>
+      );
+    }
+
+    // ── ASCENSEUR : cage avec flèches ──
+    case "elevator": {
+      const ax = w / 2;
+      return (
+        <>
+          <Rect width={w} height={h} fill={obj.fill} stroke={sc} strokeWidth={sw} dash={[4, 3]} />
+          <Rect x={5} y={5} width={w - 10} height={h - 10}
+            fill="transparent" stroke={sc} strokeWidth={0.7} cornerRadius={2} />
+          <Line points={[5, 5, w - 5, h - 5]} stroke={sc} strokeWidth={0.6} opacity={0.3} />
+          <Line points={[w - 5, 5, 5, h - 5]} stroke={sc} strokeWidth={0.6} opacity={0.3} />
+          <Arrow points={[ax - 8, h * 0.62, ax - 8, h * 0.2]}
+            stroke={sc} fill={sc} strokeWidth={1} pointerLength={5} pointerWidth={4} />
+          <Arrow points={[ax + 8, h * 0.38, ax + 8, h * 0.8]}
+            stroke={sc} fill={sc} strokeWidth={1} pointerLength={5} pointerWidth={4} />
+        </>
+      );
+    }
+
+    // ── ARMOIRE / PENDERIE : battants + tringle ──
+    case "wardrobe": {
+      const doorCount = Math.max(2, Math.round(w / 60));
+      const doorW = w / doorCount;
+      const doors: React.ReactNode[] = [];
+      for (let i = 1; i < doorCount; i++) {
+        doors.push(<Line key={i} points={[i * doorW, 0, i * doorW, h]} stroke={sc} strokeWidth={0.8} />);
+      }
+      return (
+        <>
+          <Rect width={w} height={h} fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={2} />
+          {doors}
+          {/* Hanging rail */}
+          <Line points={[6, h * 0.35, w - 6, h * 0.35]} stroke={sc} strokeWidth={1.5} />
+          {/* Hanger symbols */}
+          {Array.from({ length: Math.min(doorCount * 2, Math.floor((w - 12) / 18)) }, (_, i) => {
+            const hx = 12 + i * 18;
+            return <Path key={i} data={`M ${hx} ${h * 0.35} Q ${hx} ${h * 0.22} ${hx + 8} ${h * 0.27} Q ${hx + 16} ${h * 0.22} ${hx + 16} ${h * 0.35}`}
+              stroke={sc} strokeWidth={0.7} fill="transparent" />;
+          })}
+          {/* Bottom shelf */}
+          <Line points={[6, h * 0.75, w - 6, h * 0.75]} stroke={sc} strokeWidth={0.6} opacity={0.4} />
+        </>
+      );
+    }
+
+    // ── PLAN DE TRAVAIL CUISINE : counter + évier intégré ──
+    case "kitchen-counter": {
+      const sinkSz = Math.min(h - 12, 44);
+      const sinkX = w - sinkSz - 8;
+      const sinkY = (h - sinkSz) / 2;
+      return (
+        <>
+          <Rect width={w} height={h} fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={2} />
+          <Rect x={4} y={4} width={w - 8} height={h - 8}
+            fill="transparent" stroke={sc} strokeWidth={0.5} cornerRadius={1} opacity={0.4} />
+          {/* Integrated sink */}
+          <Rect x={sinkX} y={sinkY} width={sinkSz} height={sinkSz}
+            fill="#BAE6FD" stroke={sc} strokeWidth={0.8} cornerRadius={3} />
+          <Circle x={sinkX + sinkSz / 2} y={sinkY + sinkSz / 2} radius={sinkSz * 0.3}
+            fill="rgba(186,230,253,0.6)" stroke={sc} strokeWidth={0.6} />
+          <Circle x={sinkX + sinkSz / 2} y={sinkY + sinkSz / 2} radius={2.5} fill={sc} />
+          {/* Faucet */}
+          <Line points={[sinkX + sinkSz / 2 - 5, sinkY + 4, sinkX + sinkSz / 2 + 5, sinkY + 4]}
+            stroke={sc} strokeWidth={1.5} lineCap="round" />
+          <Line points={[sinkX + sinkSz / 2, sinkY, sinkX + sinkSz / 2, sinkY + 7]}
+            stroke={sc} strokeWidth={1.5} lineCap="round" />
+        </>
+      );
+    }
+
+    // ── DOUCHE : cabine + receveur + pomme ──
+    case "shower": {
+      return (
+        <>
+          <Rect width={w} height={h} fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={2} />
+          {/* Tray diagonal lines */}
+          <Line points={[0, 0, w, h]} stroke={sc} strokeWidth={0.6} opacity={0.3} />
+          <Line points={[w, 0, 0, h]} stroke={sc} strokeWidth={0.6} opacity={0.3} />
+          {/* Shower tray inset */}
+          <Rect x={5} y={5} width={w - 10} height={h - 10}
+            fill="rgba(186,230,253,0.35)" stroke={sc} strokeWidth={0.7} cornerRadius={2} />
+          {/* Drain */}
+          <Circle x={w / 2} y={h / 2} radius={5} fill="white" stroke={sc} strokeWidth={0.8} />
+          <Circle x={w / 2} y={h / 2} radius={2} fill={sc} />
+          {/* Shower head (corner) */}
+          <Circle x={w * 0.18} y={h * 0.18} radius={6}
+            fill="transparent" stroke={sc} strokeWidth={1} />
+          <Circle x={w * 0.18} y={h * 0.18} radius={2} fill={sc} opacity={0.6} />
+        </>
+      );
+    }
+
+    // ── CUISINIÈRE : 4 plaques ──
+    case "stove": {
+      const burners: [number, number][] = [
+        [w * 0.28, h * 0.28], [w * 0.72, h * 0.28],
+        [w * 0.28, h * 0.72], [w * 0.72, h * 0.72],
+      ];
+      const br = Math.min(w, h) * 0.15;
+      return (
+        <>
+          <Rect width={w} height={h} fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={2} />
+          <Rect x={3} y={3} width={w - 6} height={h - 6}
+            fill="transparent" stroke={sc} strokeWidth={0.5} opacity={0.4} />
+          {burners.map(([bx, by], i) => (
+            <React.Fragment key={i}>
+              <Circle x={bx} y={by} radius={br} fill="transparent" stroke={sc} strokeWidth={1} />
+              <Circle x={bx} y={by} radius={br * 0.45} fill={sc} opacity={0.35} />
+            </React.Fragment>
+          ))}
+        </>
+      );
+    }
+
+    // ── RÉFRIGÉRATEUR : compartiments + poignées ──
+    case "fridge": {
+      const freezerH = h * 0.32;
+      return (
+        <>
+          {/* Freezer */}
+          <Rect width={w} height={freezerH} fill={obj.fill} stroke={sc} strokeWidth={sw} cornerRadius={[2, 2, 0, 0] as any} />
+          {/* Fridge */}
+          <Rect y={freezerH} width={w} height={h - freezerH}
+            fill="rgba(240,253,244,0.8)" stroke={sc} strokeWidth={sw} cornerRadius={[0, 0, 2, 2] as any} />
+          {/* Divider */}
+          <Line points={[0, freezerH, w, freezerH]} stroke={sc} strokeWidth={1.2} />
+          {/* Handles */}
+          <Rect x={w - 7} y={4} width={3} height={freezerH - 8}
+            fill={sc} cornerRadius={1} opacity={0.6} />
+          <Rect x={w - 7} y={freezerH + 5} width={3} height={(h - freezerH) * 0.7}
+            fill={sc} cornerRadius={1} opacity={0.6} />
+          {/* Interior shelves */}
+          <Line points={[4, freezerH + (h - freezerH) * 0.35, w - 10, freezerH + (h - freezerH) * 0.35]}
+            stroke={sc} strokeWidth={0.5} opacity={0.35} />
+          <Line points={[4, freezerH + (h - freezerH) * 0.65, w - 10, freezerH + (h - freezerH) * 0.65]}
+            stroke={sc} strokeWidth={0.5} opacity={0.35} />
+        </>
+      );
+    }
+
     // ── PLANTE : cercle + motif feuilles ──
     case "plant": {
       const pr = Math.min(w, h) / 2 - 1;
@@ -424,11 +604,12 @@ const FloorShape: React.FC<{
   onDragMove: (dx: number, dy: number) => void;
   onDragEnd: (x: number, y: number) => void;
   onDblClick: () => void;
+  onContextMenu: (clientX: number, clientY: number) => void;
   groupRef: (node: Konva.Group | null) => void;
 }> = ({
   obj, isSelected, isLayerLocked,
   onSelect, onShiftSelect,
-  onDragStart, onDragMove, onDragEnd, onDblClick,
+  onDragStart, onDragMove, onDragEnd, onDblClick, onContextMenu,
   groupRef,
 }) => {
   const flipX = obj.flipX ?? false;
@@ -458,6 +639,11 @@ const FloorShape: React.FC<{
       onDblClick={(e: Konva.KonvaEventObject<MouseEvent>) => {
         e.cancelBubble = true;
         onDblClick();
+      }}
+      onContextMenu={(e: Konva.KonvaEventObject<MouseEvent>) => {
+        e.evt.preventDefault();
+        e.cancelBubble = true;
+        onContextMenu(e.evt.clientX, e.evt.clientY);
       }}
       onDragStart={(e: Konva.KonvaEventObject<DragEvent>) => {
         prevPos.current = { x: e.target.x(), y: e.target.y() };
@@ -509,7 +695,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   objects, layers, config, selectedIds, zoom, stagePos,
   onSelect, onShiftSelect, onRubberBandSelect,
   onMove, onBatchMove, onResize, onDrop, onZoom, onStagePosChange,
-  onTextEdit,
+  onTextEdit, onContextMenu,
 }) => {
   const stageRef = useRef<Konva.Stage>(null);
   const trRef = useRef<Konva.Transformer>(null);
@@ -792,6 +978,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                   setEditValue(obj.content || "");
                 }
               }}
+              onContextMenu={(cx, cy) => onContextMenu(obj.id, cx, cy)}
             />
           ))}
 

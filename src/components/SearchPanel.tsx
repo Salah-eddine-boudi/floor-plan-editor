@@ -9,9 +9,11 @@ interface Props {
 }
 
 const ALL_TYPES: ObjectType[] = [
-  "wall", "staircase", "door", "window",
-  "bed", "sofa", "desk", "chair", "meeting-table", "cabinet",
-  "toilet", "bathtub", "sink",
+  "wall", "column", "staircase", "stairs-spiral", "elevator",
+  "door", "window",
+  "bed", "sofa", "desk", "chair", "meeting-table", "cabinet", "wardrobe",
+  "kitchen-counter", "stove", "fridge",
+  "toilet", "bathtub", "shower", "sink",
   "plant", "text",
 ];
 
